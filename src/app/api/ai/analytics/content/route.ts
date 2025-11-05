@@ -34,7 +34,8 @@ const contentAnalysisSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const { timeframe, filters, maxResults } = contentAnalysisSchema.parse(request.query)
+    const body = await request.json()
+    const { timeframe, filters, maxResults, analysisTypes } = contentAnalysisSchema.parse(body)
 
     if (!filters.userId && !filters.campaignId && !filters.userId) {
       return NextResponse.json(

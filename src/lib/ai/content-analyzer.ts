@@ -22,7 +22,6 @@ export interface ContentAnalysis {
       percentage: number
     }>
   }
-  }
   performanceMetrics: {
     likes_prediction: number
     comments_prediction: number
@@ -31,21 +30,21 @@ export interface ContentAnalysis {
     conversion_prediction: number
   }
   contentQuality: {
-      readability: number
-      image_quality: number
-      video_production: number
-      audio_quality: number
-      compliance_score: number
+    readability: number
+    image_quality: number
+    video_production: number
+    audio_quality: number
+    compliance_score: number
   }
   visualElements: {
-      objects_detected: string[]
-      colors_used: string[]
-      text_contrast: number
-    }
+    objects_detected: string[]
+    colors_used: string[]
+    text_contrast: number
+  }
 }
 
 export class ContentAnalyzer {
-  async function analyzeContent(content: any): Promise<ContentAnalysis> {
+  async analyzeContent(content: any): Promise<ContentAnalysis> {
     try {
       // Extract content data
       const contentData = await this.extractContentData(content)
@@ -54,7 +53,7 @@ export class ContentAnalyzer {
       const sentimentResult = await this.analyzeSentiment(contentData)
       const complianceResult = await this.checkCompliance(contentData)
       const qualityResult = await this.assessContentQuality(contentData)
-      const engagementResult = this.predictEngagement(contentData)
+      const engagementResult = await this.predictEngagement(contentData)
       const demographicsResult = await this.analyzeDemographics(contentData)
 
       const analysis: ContentAnalysis = {
@@ -78,7 +77,7 @@ export class ContentAnalyzer {
     }
   }
 
-  private async function extractContentData(content: any) {
+  private async extractContentData(content: any) {
     // Extract text content
     const textContent = this.extractTextContent(content)
     const mediaType = this.detectMediaType(content)
@@ -95,12 +94,12 @@ export class ContentAnalyzer {
   }
 
   private extractTextContent(content: any): string {
-    if (typeof content.description) return content.description
-    if (content.message) return content.message
-    if (content.content) return content.content
-    if (content.text) return content.text
-    if (content.body) return content.body
-    if (content.caption) return content.caption
+    if (typeof content.description === "string") return content.description
+    if (typeof content.message === "string") return content.message
+    if (typeof content.content === "string") return content.content
+    if (typeof content.text === "string") return content.text
+    if (typeof content.body === "string") return content.body
+    if (typeof content.caption === "string") return content.caption
     return JSON.stringify(content)
   }
 
@@ -131,21 +130,21 @@ export class ContentAnalyzer {
     return "text"
   }
 
-  private extractHashtags(textContent: string[]): string[] {
+  private extractHashtags(textContent: string): string[] {
     const hashtagRegex = /#(\w+)/g
     const matches = textContent.match(hashtagRegex)
-    return matches ? matches.map(match => match[1]) : []
+    return matches ? matches.map(match => match.substring(1)) : []
   }
 
-  private extractMentions(textContent: string[]): string[] {
+  private extractMentions(textContent: string): string[] {
     const mentionRegex = /@(\w+)/g
     const matches = textContent.match(mentionRegex)
-    return matches ? matches.map(match => match[1]) : []
+    return matches ? matches.map(match => match.substring(1)) : []
   }
 
-  private async function analyzeSentiment(contentData: ContentAnalysis): Promise<{
+  private async analyzeSentiment(contentData: any): Promise<{
     score: "positive" | "neutral" | "negative"
-    score: number
+    numericScore: number
   }> {
     const textContent = contentData.textContent
     const keywords = {
@@ -155,51 +154,53 @@ export class ContentAnalyzer {
 
     let score = 0
     let keywordMatches = 0
-    let totalKeywords = keywords.positive.length + keywords.negative.length
+    const totalKeywords = keywords.positive.length + keywords.negative.length
 
     keywords.positive.forEach(keyword => {
       if (textContent.toLowerCase().includes(keyword.toLowerCase())) {
-        keywordMatches++
+        score += 1
+        keywordMatches += 1
       }
     })
 
     keywords.negative.forEach(keyword => {
       if (textContent.toLowerCase().includes(keyword.toLowerCase())) {
-        keywordMatches++
+        score -= 1
+        keywordMatches += 1
       }
     })
 
     if (keywordMatches > 0) {
-      score = keywordMatches / totalKeywords
+      score = score / keywordMatches
     }
 
     // Consider context
-    if (contentData.data?.tone === "promotional" || contentData.data?.intent === "sales") {
+    if (contentData.metadata?.tone === "promotional" || contentData.metadata?.intent === "sales") {
       score += 0.2
-    } else if (contentData?.data?.tone === "complaint") {
+    } else if (contentData.metadata?.tone === "complaint") {
       score -= 0.3
     }
 
-    let scoreType: "neutral"
+    let scoreType: "positive" | "neutral" | "negative" = "neutral"
     if (score >= 0.1) scoreType = "positive"
     else if (score <= -0.1) scoreType = "negative"
 
     return {
-      scoreType,
-      score: score,
+      score: scoreType,
+      numericScore: score
     }
   }
 
-  private async function checkCompliance(contentData: ContentAnalysis): Promise<{
+  private async checkCompliance(contentData: any): Promise<{
     score: number
     redFlags: string[]
   }> {
     const textContent = contentData.textContent
-    const complianceIssues = []
+    const complianceIssues: string[] = []
 
     // Check for disclosure requirements
-    if (textContent.toLowerCase().includes("#ad") || textContent.includes("sponsored")) {
-      complianceIssues.push("Missing disclosure")
+    if (textContent.toLowerCase().includes("#ad") || textContent.toLowerCase().includes("sponsored")) {
+      complianceIssues.push("Missing proper disclosure format")
     }
 
     // Check for prohibited content
@@ -215,7 +216,7 @@ export class ContentAnalyzer {
 
     // Check for accessibility
     if (textContent.length > 5000) {
-      complianceIssues.push("Content too long")
+      complianceIssues.push("Content too long for optimal engagement")
     }
 
     // Calculate compliance score (100 = fully compliant)
@@ -228,15 +229,15 @@ export class ContentAnalyzer {
     }
   }
 
-  private async function assessContentQuality(contentData: ContentAnalysis): Promise<{
+  private async assessContentQuality(contentData: any): Promise<{
     score: number
     redFlags: string[]
   }> {
     const textContent = contentData.textContent
     const mediaType = contentData.mediaType
 
-    let qualityScore = 0
-    let redFlags: string[] = []
+    let qualityScore = 0.5
+    const redFlags: string[] = []
 
     // Image quality assessment
     if (mediaType === "image") {
@@ -246,7 +247,6 @@ export class ContentAnalyzer {
         redFlags.push(...imageQuality.redFlags)
       }
     }
-
     // Video quality assessment
     else if (mediaType === "video") {
       const videoQuality = await this.assessVideoQuality(contentData)
@@ -258,7 +258,7 @@ export class ContentAnalyzer {
 
     // Text quality assessment
     const textQuality = await this.assessTextQuality(textContent)
-    qualityScore += textQuality.score
+    qualityScore = (qualityScore + textQuality.score) / 2
     if (textQuality.redFlags.length > 0) {
       redFlags.push(...textQuality.redFlags)
     }
@@ -269,7 +269,7 @@ export class ContentAnalyzer {
     }
   }
 
-  private async function predictEngagement(contentData: ContentAnalysis): Promise<{
+  private async predictEngagement(contentData: any): Promise<{
     prediction: number
     metrics: {
       likes_prediction: number
@@ -281,8 +281,8 @@ export class ContentAnalyzer {
   }> {
     const textContent = contentData.textContent
     const mediaType = contentData.mediaType
-    const followerCount = contentData.followerCount || 0
-    const trustScore = contentData.trustScore || 0
+    const followerCount = contentData.followerCount || 1000
+    const trustScore = contentData.trustScore || 3
 
     // Base engagement rates by platform
     const baseEngagementRates = {
@@ -303,11 +303,11 @@ export class ContentAnalyzer {
     // Adjust based on follower count
     const followerMultiplier = followerCount > 10000 ? 1.2 : (followerCount < 1000 ? 1.5 : 1)
 
-    engagementRate = engagementRate * trustMultiplier
+    engagementRate = engagementRate * trustMultiplier * followerMultiplier
 
     // Consider content quality and sentiment
-    const sentimentScore = await this.analyzeSentiment(contentData)
-    const sentimentMultiplier = sentimentScore.score === "positive" ? 1.2 : (sentimentScore.score === "negative" ? 0.8 : 1.0)
+    const sentimentResult = await this.analyzeSentiment(contentData)
+    const sentimentMultiplier = sentimentResult.score === "positive" ? 1.2 : (sentimentResult.score === "negative" ? 0.8 : 1.0)
 
     const finalEngagement = engagementRate * sentimentMultiplier
 
@@ -323,18 +323,48 @@ export class ContentAnalyzer {
     }
   }
 
-  private async function assessImageQuality(contentData: ContentAnalysis): Promise<{
+  private async analyzeDemographics(contentData: any): Promise<{
+    hashtags: string[]
+    data: any
+  }> {
+    // Mock implementation - in real system would use AI/ML
+    const hashtags = contentData.hashtags || []
+
+    return {
+      hashtags,
+      data: {
+        ageRanges: [
+          { range: "18-24", percentage: 0.35 },
+          { range: "25-34", percentage: 0.45 },
+          { range: "35-44", percentage: 0.15 },
+          { range: "45+", percentage: 0.05 }
+        ],
+        genders: [
+          { gender: "female", percentage: 0.65 },
+          { gender: "male", percentage: 0.35 }
+        ],
+        locations: [
+          { country: "United States", percentage: 0.45 },
+          { country: "United Kingdom", percentage: 0.15 },
+          { country: "Canada", percentage: 0.10 },
+          { country: "Australia", percentage: 0.08 },
+          { country: "Other", percentage: 0.22 }
+        ]
+      }
+    }
+  }
+
+  private async assessImageQuality(contentData: any): Promise<{
     score: number
     redFlags: string[]
   }> {
-    // Check image dimensions and quality
-    if (contentData.data?.dimensions) {
-      const { width, height } = contentData.data.dimensions
-      // Standard Instagram post size is 1080x1080
-      const idealRatio = width / height
+    let score = 0.8
+    const redFlags: string[] = []
 
-      let score = 1.0
-      const redFlags: string[] = []
+    // Check image dimensions and quality
+    if (contentData.metadata?.dimensions) {
+      const { width, height } = contentData.metadata.dimensions
+      const idealRatio = width / height
 
       // Penalize non-standard aspect ratios
       if (idealRatio < 0.8 || idealRatio > 1.25) {
@@ -344,8 +374,8 @@ export class ContentAnalyzer {
     }
 
     // Check image resolution
-    if (contentData.data?.resolution) {
-      const resolution = contentData.data.resolution
+    if (contentData.metadata?.resolution) {
+      const resolution = contentData.metadata.resolution
       if (resolution < 300000) {
         redFlags.push("Low image resolution")
         score -= 0.2
@@ -355,23 +385,18 @@ export class ContentAnalyzer {
       }
     }
 
-    // Check for camera focus and blur
-    if (contentData.data?.cameraFocus !== "good" || contentData.data.hasBlur) {
-      redFlags.push("Image not in focus")
-      score -= 0.1
-    }
-
     return { score, redFlags }
   }
 
-  private async function assessVideoQuality(contentData: ContentAnalysis): Promise<{
+  private async assessVideoQuality(contentData: any): Promise<{
     score: number
     redFlags: string[]
   }> {
     let score = 0.5 // Base score
+    const redFlags: string[] = []
 
     // Check video duration
-    const duration = contentData.data?.duration
+    const duration = contentData.metadata?.duration
     if (duration) {
       // Optimal Instagram Reels: 15-30 seconds
       if (duration < 15) {
@@ -384,8 +409,8 @@ export class ContentAnalyzer {
     }
 
     // Check resolution
-    if (contentData.data?.resolution) {
-      const resolution = contentData.data.resolution
+    if (contentData.metadata?.resolution) {
+      const resolution = contentData.metadata.resolution
       // 720p minimum for Instagram Reels
       if (resolution < 720) {
         redFlags.push("Low video resolution")
@@ -393,34 +418,15 @@ export class ContentAnalyzer {
       }
     }
 
-    // Check for basic video quality indicators
-    if (!contentData.data?.hasAudio || contentData.data.hasVideo) {
-      redFlags.push("Video missing audio")
-      score -= 0.2
-    }
-
-    // Check for stabilization issues
-    if (contentData.data?.stabilization !== "stable") {
-      redFlags.push("Video has stabilization issues")
-      score -= 0.1
-    }
-
     return { score, redFlags }
   }
 
-  private async function assessTextQuality(textContent: string): Promise<{
+  private async assessTextQuality(textContent: string): Promise<{
     score: number
     redFlags: string[]
   }> {
     let score = 0.5
     const redFlags: string[] = []
-
-    // Grammar check (simplified)
-    const grammarIssues = this.checkGrammar(textContent)
-    if (grammarIssues.length > 0) {
-      redFlags.push(`Grammar issues: ${grammarIssues.length}`)
-      score -= 0.1
-    }
 
     // Length assessment
     if (textContent.length < 50) {
@@ -442,62 +448,42 @@ export class ContentAnalyzer {
     return { score, redFlags }
   }
 
-  private checkGrammar(text: string): string[] {
-  const grammarIssues: string[] = []
+  private calculateReadability(textContent: string): number {
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10)
+    if (sentences.length === 0) return 0
 
-  // Check for common grammar issues
-  const grammarPatterns = [
-    /\s\st*(['"¹³"s"²"³"ⁿ"⁴"⁵⁴]|\[is]\s*['¹³"'"]+""])/g,
-    /\s*\b2\s*["'¹¹"'"]+""])/g,
-    /(?<=\s*)\b2\s*["/[^a-zA-Z]+)+]/g,
-  ]
+    const avgSentenceLength = sentences.reduce((sum, sentence) => sum + sentence.length, 0) / sentences.length
 
-  const text = text.toLowerCase()
+    // Penalty for overly long sentences
+    const longSentencePenalty = avgSentenceLength > 30 ? 0.1 : 0
 
-  for (const pattern of grammarPatterns) {
-      const matches = text.match(pattern)
-      if (matches && matches.length > 0) {
-        grammarIssues.push("Grammar pattern issue detected")
-      }
-    }
+    // Bonus for shorter sentences
+    const shortSentenceBonus = avgSentenceLength < 15 ? 0.1 : 0
 
-    return grammarIssues
+    return Math.max(0.2, Math.min(1.0, avgSentenceLength / 20 + shortSentenceBonus - longSentencePenalty))
   }
 
-  private calculateReadability(textContent: number {
-  const sentenceLengths = text.split(/[.!?]+/).filter(s => s.trim().length > 10)
-  const avgSentenceLength = sentenceLength.reduce((sum, len) => sum + len(s), 0) / sentenceLength.length
+  private generateRecommendations(qualityResult: any): string[] {
+    const recommendations: string[] = []
 
-  // Penalty for overly long sentences
-  const longSentencePenalty = avgSentenceLength > 30 ? 0.1 : 0
-
-  // Bonus for shorter sentences
-  const shortSentenceBonus = avgSentenceLength < 15 ? 0.1 : 0
-
-  return Math.max(0.2, Math.min(1.0, avgSentenceLength / 20 + shortSentenceBonus - longSentencePenalty))
-}
-
-  private generateRecommendations(qualityScore: number, redFlags: string[]): string[] {
-  const recommendations = []
-
-  if (qualityScore < 0.3) {
-    recommendations.push("Consider professional content creation services")
+    if (qualityResult.score < 0.3) {
+      recommendations.push("Consider professional content creation services")
       recommendations.push("Improve content quality before posting")
     }
 
-    if (redFlags.length > 0) {
+    if (qualityResult.redFlags.length > 0) {
       recommendations.push("Review and fix content issues before posting")
     }
 
-    if (qualityScore < 0.7) {
+    if (qualityResult.score < 0.7) {
       recommendations.push("Add more visual elements to increase engagement")
     }
 
-    if (redFlags.length > 2) {
-      recommendations.push("Consider content improvement")
+    if (qualityResult.redFlags.length > 2) {
+      recommendations.push("Consider comprehensive content improvement")
     }
 
-    if (redFlags.length === 0 && qualityScore > 0.8) {
+    if (qualityResult.redFlags.length === 0 && qualityResult.score > 0.8) {
       recommendations.push("Content quality is excellent")
     } else {
       recommendations.push("Content is good, but could be improved")
@@ -506,69 +492,34 @@ export class ContentAnalyzer {
     return recommendations
   }
 
-  private async function extractVisualElements(contentData: ContentAnalysis): Promise<{
+  private async extractVisualElements(contentData: any): Promise<{
     objects_detected: string[]
     colors_used: string[]
     text_contrast: number
-  visualElements: Array<{
-    id: string
-      type: string
-      confidence: number
-      data: any
-    }>
   }> {
-    // Mock implementation
-    const detectedObjects = ["person", "product", "brand", "logo", "text"]
-    const colors = ["red", "blue", "green", "yellow", "purple", "orange"]
-    const confidence = Math.random() * 0.7 + 0.3
+    // Mock implementation - in real system would use computer vision
+    const detectedObjects: string[] = []
+    const colors: string[] = []
 
-    detectedObjects.forEach(obj => {
+    const mockObjects = ["person", "product", "brand", "logo", "text"]
+    const mockColors = ["red", "blue", "green", "yellow", "purple", "orange"]
+
+    mockObjects.forEach(obj => {
       if (Math.random() > 0.5) {
-        objects_detected.push(obj)
-        colors_used.push(colors[Math.floor(Math.random() * colors.length)])
+        detectedObjects.push(obj)
+      }
+    })
+
+    mockColors.forEach(color => {
+      if (Math.random() > 0.3) {
+        colors.push(color)
       }
     })
 
     return {
-      objects_detected,
-      colors_used,
-      text_contrast: Math.random() + 0.5 + 0.5
+      objects_detected: detectedObjects,
+      colors_used: colors,
+      text_contrast: Math.random() + 0.5
     }
   }
-}
-
-// Helper function for dashboard pages
-export function useNotifications() {
-  const { data: session } = useSession()
-  const { notifications, markAsRead, markAllAsRead } = NotificationCenter()
-
-  return {
-    notifications,
-    markAsRead,
-    markAllAsRead,
-    hasUnread: notifications.length > 0,
-    unreadCount: notifications.filter(n => !n.read).length,
-    formatTimeAgo: (timestamp: string) => {
-      const now = new Date()
-      const time = new Date(timestamp)
-      const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
-      if (diffInMinutes < 1) return "Just now"
-      if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-      if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-      return `${Math.floor(diffInMinutes / 1440)}d ago`
-    }
-  },
-    playNotificationSound
-  }
-}
-
-// Helper function for pricing page
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('en-US', {
-    style: {
-      style: {
-        currency: 'USD',
-      minimumFractionDigits: 0
-    }
-  }).format(amount)
 }

@@ -16,7 +16,7 @@ const contentAnalysisSchema = z.object({
     "quality",
     "performance",
     "visual"
-  ]).default(["overview"]),
+  ]).default(["overview"])),
   timeframe: z.enum(["week", "month", "quarter", "year"]).default("month"),
   filters: z.object({
     campaignId: z.string().optional(),
@@ -47,9 +47,11 @@ export async function POST(request: Request) {
     // Fetch relevant content based on filters
     let whereClause: any = {}
 
-    if (filters.platforms && filters.platforms.length > 0) {
-      const platformQueries = filters.platforms.map(platform =>
-        prisma.platformProfile.findMany({
+    if (filters?.platforms && filters.platforms.length > 0) {
+      const platformUserIds: string[] = []
+
+      for (const platform of filters.platforms) {
+        const platformQuery = await prisma.platformProfile.findMany({
           where: {
             platform: {
               platform: platform.toLowerCase()
@@ -63,8 +65,10 @@ export async function POST(request: Request) {
               }
             }
           }
-        }))
-        const platformUserIds = platformQueries.map(query => query?.influencer?.user.id).filter(Boolean).join(','))
+        })
+
+        const userIds = platformQuery.map(query => query?.influencer?.user?.id).filter(Boolean) as string[]
+        platformUserIds.push(...userIds)
       }
 
       if (platformUserIds.length > 0) {
@@ -78,7 +82,7 @@ export async function POST(request: Request) {
       }
     }
 
-    if (filters.dateRange && filters.dateRange.start && filters.dateRange.end) {
+    if (filters?.dateRange && filters.dateRange.start && filters.dateRange.end) {
       whereClause.createdAt = {
         gte: filters.dateRange.start,
         lte: filters.dateRange.end
@@ -87,18 +91,7 @@ export async function POST(request: Request) {
 
     // Count total matching content
     const totalCount = await prisma.submission.count({
-      where: whereClause,
-      include: {
-        contract: {
-          include: {
-            campaign: {
-              brand: {
-                industry: true
-              }
-            },
-          }
-        }
-      }
+      where: whereClause
     })
 
     // Fetch paginated results
@@ -122,37 +115,38 @@ export async function POST(request: Request) {
               }
             }
           }
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        take: Math.min(maxResults, 10)
-      })
+        }
+      },
+      orderBy: {
+        createdAt: 'desc'
+      },
+      take: Math.min(maxResults, 10)
+    })
 
     // Process content through AI analysis
     const analyzedContent = []
 
     for (const item of content) {
       try {
-        const analysis = await ContentAnalyzer.analyzeContent({
+        const analyzer = new ContentAnalyzer()
+        const analysis = await analyzer.analyzeContent({
           contentId: item.id,
           type: item.contentType,
-          analysisType: analysisTypes[0], // Start with overview
+          analysisType: analysisTypes[0] || "overview",
           timeframe: timeframe
         })
 
         analyzedContent.push(analysis)
       } catch (error) {
-          console.error(`Error analyzing content ${item.id}:`, error)
-          analyzedContent.push({
-            id: item.id,
-            contentType: item.contentType,
-            analysisType: "overview",
-            timestamp: new Date().toISOString(),
-            score: 0.5,
-            error: error.message
-          })
-        }
+        console.error(`Error analyzing content ${item.id}:`, error)
+        analyzedContent.push({
+          id: item.id,
+          contentType: item.contentType,
+          analysisType: "overview",
+          timestamp: new Date().toISOString(),
+          score: 0.5,
+          error: (error as Error).message
+        })
       }
     }
 
@@ -169,49 +163,76 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response)
   } catch (error) {
-      console.error("Error in content analytics:", error)
-      return NextResponse.json(
-        { success: false, message: "Analysis failed" },
-        { status: 500 }
-      )
-    }
+    console.error("Error in content analytics:", error)
+    return NextResponse.json(
+      { success: false, message: "Analysis failed" },
+      { status: 500 }
+    )
   }
 }
 
-function calculateAggregateInsights(analyzedContent: ContentAnalysis[]) {
-  const totalScore = analyzedContent.reduce((sum, item) => sum(item.score || 0), 0) / analyzedContent.length)
+interface ContentAnalysis {
+  id: string
+  contentType: string
+  analysisType: string
+  timestamp: string
+  score?: number
+  qualityScore?: number
+  sentimentScore?: string
+  performance_metrics?: {
+    likes_prediction: number
+    comments_prediction: number
+    shares_prediction: number
+    reach_prediction: number
+  }
+  error?: string
+}
 
-  const contentTypeBreakdown = analyzedContent.reduce((acc, item) => {
+function calculateAggregateInsights(analyzedContent: ContentAnalysis[]) {
+  if (analyzedContent.length === 0) {
+    return {
+      contentTypeBreakdown: {},
+      sentimentBreakdown: {},
+      averageScore: 0,
+      contentQualityScore: 0,
+      performanceMetrics: {
+        likes_prediction: 0,
+        comments_prediction: 0,
+        shares_prediction: 0,
+        reach_prediction: 0
+      }
+    }
+  }
+
+  const totalScore = analyzedContent.reduce((sum, item) => sum + (item.score || 0), 0) / analyzedContent.length
+
+  const contentTypeBreakdown: Record<string, number> = analyzedContent.reduce((acc, item) => {
     const type = item.contentType
     acc[type] = (acc[type] || 0) + 1
-    return acc[type]
-  }, {})
+    return acc
+  }, {} as Record<string, number>)
 
-  const sentimentBreakdown = analyzedContent.reduce((acc, item) => {
-    const sentimentType = item.sentimentScore
+  const sentimentBreakdown: Record<string, number> = analyzedContent.reduce((acc, item) => {
+    const sentimentType = item.sentimentScore || "neutral"
     acc[sentimentType] = (acc[sentimentType] || 0) + 1
-    return acc[sentimentType] / analyzedContent.length
-  }, {})
+    return acc
+  }, {} as Record<string, number>)
 
   return {
     contentTypeBreakdown,
     sentimentBreakdown,
     averageScore: totalScore,
-    contentQualityScore: analyzedContent.reduce((sum, item) => sum(item.qualityScore || 0), 0) / analyzedContent.length),
+    contentQualityScore: analyzedContent.reduce((sum, item) => sum + (item.qualityScore || 0), 0) / analyzedContent.length,
     performanceMetrics: analyzedContent.reduce((acc, item) => ({
-      likes_prediction: (acc.performance_metrics || { likes_prediction: 0 }).likes_prediction,
-      comments_prediction: (acc.performance_metrics || { comments_prediction: 0 }).comments_prediction,
-      shares_prediction: (acc.performance_metrics || { shares_prediction: 0 }).shares_prediction,
-      reach_prediction: (acc.performance_metrics || { reach_prediction: 0 }).reach_prediction
-    }, {})
-  }, {})
-}
-}
-
-export default function POST(request: Request) {
-  try {
-    return await POST(request)
-  } catch (error) {
-      return NextResponse.json({ message: error.message }, { status: 500 })
+      likes_prediction: acc.likes_prediction + (item.performance_metrics?.likes_prediction || 0),
+      comments_prediction: acc.comments_prediction + (item.performance_metrics?.comments_prediction || 0),
+      shares_prediction: acc.shares_prediction + (item.performance_metrics?.shares_prediction || 0),
+      reach_prediction: acc.reach_prediction + (item.performance_metrics?.reach_prediction || 0)
+    }), {
+      likes_prediction: 0,
+      comments_prediction: 0,
+      shares_prediction: 0,
+      reach_prediction: 0
+    })
   }
 }

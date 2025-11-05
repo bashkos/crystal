@@ -1,0 +1,461 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique
+  emailVerified     DateTime? @map("email_verified")
+  passwordHash      String?   @map("password_hash")
+  role              UserRole  @default(UNVERIFIED)
+  status            UserStatus @default(PENDING)
+  isActive          Boolean   @default(true) @map("is_active")
+  lastLoginAt       DateTime? @map("last_login_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // OAuth connections
+  googleId          String?   @unique @map("google_id")
+  linkedinId        String?   @unique @map("linkedin_id")
+  instagramId       String?   @unique @map("instagram_id")
+
+  // Relationships
+  brandProfile      BrandProfile?
+  influencerProfile InfluencerProfile?
+  accounts          Account[]
+  sessions          Session[]
+  contracts         Contract[]
+  payments          Payment[]
+  reviews           Review[]
+  messages          Message[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model BrandProfile {
+  id                  String     @id @default(cuid())
+  userId              String     @unique @map("user_id")
+  companyName         String     @map("company_name")
+  companyDescription  String?    @map("company_description")
+  website             String?
+  industry            String?
+  logo                String?
+  contactEmail        String     @map("contact_email")
+  phone               String?
+  address             String?
+  companySize         String?    @map("company_size")
+  annualRevenue       String?    @map("annual_revenue")
+  verificationStatus  VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  // Social media links
+  linkedinUrl         String?    @map("linkedin_url")
+  twitterUrl          String?    @map("twitter_url")
+  facebookUrl         String?    @map("facebook_url")
+
+  // Settings
+  campaignPreferences Json?      @map("campaign_preferences")
+
+  user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns           Campaign[]
+  contracts           Contract[]
+  reviews             Review[]
+
+  @@map("brand_profiles")
+}
+
+model InfluencerProfile {
+  id                  String            @id @default(cuid())
+  userId              String            @unique @map("user_id")
+  firstName           String            @map("first_name")
+  lastName            String            @map("last_name")
+  bio                 String?
+  profileImage        String?           @map("profile_image")
+  location            String?
+  languages           String[]          @default([])
+  timezone            String?
+  website             String?
+  contactEmail        String            @map("contact_email")
+  phone               String?
+  verificationStatus  VerificationStatus @default(PENDING) @map("verification_status")
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+
+  // Professional details
+  niches              String[]          @default([])
+  platforms           PlatformProfile[]
+  equipment           String[]          @default([])
+  portfolio           PortfolioItem[]
+
+  // Metrics
+  followerCount       Int?              @map("follower_count")
+  engagementRate      Float?            @map("engagement_rate")
+  avgLikes            Int?              @map("avg_likes")
+  avgComments         Int?              @map("avg_comments")
+
+  // Settings
+  pricing             Json?             // Platform-specific pricing
+  availability        Json?             // Calendar and booking info
+  collaborationPreferences Json?        @map("collaboration_preferences")
+
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  applications        Application[]
+  contracts           Contract[]
+  reviews             Review[]
+  messages            Message[]
+
+  @@map("influencer_profiles")
+}
+
+model PlatformProfile {
+  id                String        @id @default(cuid())
+  influencerProfileId String      @unique @map("influencer_profile_id")
+  platform          PlatformType
+  handle            String
+  followerCount     Int?          @map("follower_count")
+  engagementRate    Float?        @map("engagement_rate")
+  avgLikes          Int?          @map("avg_likes")
+  avgComments       Int?          @map("avg_comments")
+  isVerified        Boolean       @default(false) @map("is_verified")
+  profileUrl        String?       @map("profile_url")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  influencerProfile InfluencerProfile @relation(fields: [influencerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("platform_profiles")
+}
+
+model PortfolioItem {
+  id                String      @id @default(cuid())
+  influencerProfileId String    @map("influencer_profile_id")
+  title             String
+  description       String?
+  mediaType         MediaType   @map("media_type")
+  mediaUrl          String      @map("media_url")
+  thumbnailUrl      String?     @map("thumbnail_url")
+  platform          String?
+  campaignContext   String?     @map("campaign_context")
+  tags              String[]    @default([])
+  isActive          Boolean     @default(true) @map("is_active")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  influencerProfile InfluencerProfile @relation(fields: [influencerProfileId], references: [id], onDelete: Cascade)
+
+  @@map("portfolio_items")
+}
+
+model Campaign {
+  id                  String        @id @default(cuid())
+  brandId             String        @map("brand_id")
+  title               String
+  description         String
+  category            String
+  contentType         ContentType   @map("content_type")
+  platform           PlatformType
+  requirements        Json          // Detailed requirements
+  deliverables        Json          // List of deliverables
+  budgetMin           Float?        @map("budget_min")
+  budgetMax           Float?        @map("budget_max")
+  applicationDeadline DateTime?     @map("application_deadline")
+  startDate           DateTime      @map("start_date")
+  endDate             DateTime      @map("end_date")
+  location            String?
+  isRemote            Boolean       @default(true) @map("is_remote")
+  status              CampaignStatus @default(DRAFT)
+  visibility          CampaignVisibility @default(PUBLIC)
+  influencerCount     Int?          @map("influencer_count") // Number of influencers needed
+  createdAt           DateTime      @default(now()) @map("created_at")
+  updatedAt           DateTime      @updatedAt @map("updated_at")
+
+  brandProfile        BrandProfile  @relation(fields: [brandId], references: [id])
+  applications        Application[]
+  contracts           Contract[]
+
+  @@map("campaigns")
+}
+
+model Application {
+  id             String           @id @default(cuid())
+  campaignId     String           @map("campaign_id")
+  influencerId   String           @map("influencer_id")
+  proposedRate   Float?           @map("proposed_rate")
+  proposalText   String?          @map("proposal_text")
+  timelineEstimate String?        @map("timeline_estimate")
+  status         ApplicationStatus @default(SUBMITTED)
+  submittedAt    DateTime         @default(now()) @map("submitted_at")
+  reviewedAt     DateTime?        @map("reviewed_at")
+  notes          String?          // Internal notes
+
+  campaign       Campaign         @relation(fields: [campaignId], references: [id])
+  influencer     InfluencerProfile @relation(fields: [influencerId], references: [id])
+
+  @@unique([campaignId, influencerId])
+  @@map("applications")
+}
+
+model Contract {
+  id              String         @id @default(cuid())
+  campaignId      String         @map("campaign_id")
+  brandId         String         @map("brand_id")
+  influencerId    String         @map("influencer_id")
+  contractTerms   Json           @map("contract_terms")
+  totalAmount     Float          @map("total_amount")
+  paymentSchedule Json           @map("payment_schedule")
+  status          ContractStatus @default(DRAFT)
+  signedAt        DateTime?      @map("signed_at")
+  startedAt       DateTime?      @map("started_at")
+  completedAt     DateTime?      @map("completed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  campaign        Campaign         @relation(fields: [campaignId], references: [id])
+  brand           User             @relation(fields: [brandId], references: [id])
+  influencer      User             @relation(fields: [influencerId], references: [id])
+  payments        Payment[]
+  reviews         Review[]
+  submissions     Submission[]
+
+  @@map("contracts")
+}
+
+model Payment {
+  id               String          @id @default(cuid())
+  contractId       String          @map("contract_id")
+  amount           Float
+  paymentType      PaymentType     @map("payment_type")
+  status           PaymentStatus   @default(PENDING)
+  dueDate          DateTime        @map("due_date")
+  paidDate         DateTime?       @map("paid_date")
+  stripePaymentId  String?         @map("stripe_payment_id")
+  metadata         Json?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  contract         Contract        @relation(fields: [contractId], references: [id])
+  user             User            @relation(fields: [contractId], references: [id])
+
+  @@map("payments")
+}
+
+model Submission {
+  id              String          @id @default(cuid())
+  contractId      String          @map("contract_id")
+  contentType     ContentType     @map("content_type")
+  title           String
+  description     String?
+  mediaUrl        String          @map("media_url")
+  thumbnailUrl    String?         @map("thumbnail_url")
+  status          SubmissionStatus @default(PENDING)
+  submittedAt     DateTime        @default(now()) @map("submitted_at")
+  reviewedAt      DateTime?       @map("reviewed_at")
+  feedback        String?
+  revisionCount   Int             @default(0) @map("revision_count")
+  finalApproval   Boolean         @default(false) @map("final_approval")
+
+  contract        Contract        @relation(fields: [contractId], references: [id])
+
+  @@map("submissions")
+}
+
+model Review {
+  id              String      @id @default(cuid())
+  contractId      String      @map("contract_id")
+  reviewerId      String      @map("reviewer_id")
+  revieweeId      String      @map("reviewee_id")
+  ratingScores    Json        @map("rating_scores") // Multi-dimensional ratings
+  reviewText      String?     @map("review_text")
+  recommendation  Float?      // Recommendation score (1-10)
+  isPublic        Boolean     @default(true) @map("is_public")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  contract        Contract    @relation(fields: [contractId], references: [id])
+  reviewer        User        @relation(fields: [reviewerId], references: [id])
+  reviewee        User        @relation(fields: [revieweeId], references: [id])
+  helpfulVotes    Int         @default(0) @map("helpful_votes")
+
+  @@unique([contractId, reviewerId])
+  @@map("reviews")
+}
+
+model Message {
+  id              String      @id @default(cuid())
+  senderId        String      @map("sender_id")
+  receiverId      String      @map("receiver_id")
+  contractId      String?     @map("contract_id")
+  content         String
+  messageType     MessageType @default(TEXT)
+  attachments     Json?       // File attachments
+  isRead          Boolean     @default(false) @map("is_read")
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  sender          User        @relation(fields: [senderId], references: [id])
+  receiver        User        @relation(fields: [receiverId], references: [id])
+
+  @@map("messages")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  BRAND
+  INFLUENCER
+  UNVERIFIED
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  PENDING_REVIEW
+}
+
+enum PlatformType {
+  INSTAGRAM
+  TIKTOK
+  YOUTUBE
+  TWITTER
+  LINKEDIN
+  FACEBOOK
+  TWITCH
+  PINTEREST
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  CAROUSEL
+  STORY
+  REEL
+  SHORT
+  BLOG_POST
+}
+
+enum ContentType {
+  PHOTO
+  VIDEO
+  CAROUSEL
+  STORY
+  REEL
+  SHORT
+  BLOG_POST
+  LIVE_STREAM
+  PODCAST
+}
+
+enum CampaignStatus {
+  DRAFT
+  OPEN
+  REVIEWING
+  HIRING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CampaignVisibility {
+  PUBLIC
+  INVITE_ONLY
+  PRIVATE
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  SHORTLISTED
+  REJECTED
+  HIRED
+  WITHDRAWN
+}
+
+enum ContractStatus {
+  DRAFT
+  SENT
+  SIGNED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentType {
+  UPFRONT
+  MILESTONE
+  FINAL
+  BONUS
+}
+
+enum PaymentStatus {
+  PENDING
+  HELD
+  RELEASED
+  FAILED
+  CANCELLED
+}
+
+enum SubmissionStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  REVISION_REQUESTED
+  FINAL_APPROVED
+  PUBLISHED
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  SYSTEM
+}

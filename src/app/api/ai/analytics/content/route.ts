@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { timeframe, filters, maxResults, analysisTypes } = contentAnalysisSchema.parse(body)
 
-    if (!filters.userId && !filters.campaignId && !filters.userId) {
+    if (!filters?.userId && !filters?.campaignId) {
       return NextResponse.json(
         { message: "Content analysis requires user or campaign context" },
         { status: 400 }

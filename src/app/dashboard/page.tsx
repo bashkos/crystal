@@ -10,7 +10,9 @@ import {
   DollarSign,
   ArrowRight,
   Plus,
-  Search
+  Search,
+  FileText,
+  Settings
 } from "lucide-react"
 import Link from "next/link"
 

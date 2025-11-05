@@ -137,6 +137,7 @@ model InfluencerProfile {
   pricing             Json?             // Platform-specific pricing
   availability        Json?             // Calendar and booking info
   collaborationPreferences Json?        @map("collaboration_preferences")
+  trustScore          Float?             @default(0) @map("trust_score")
 
   user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   applications        Application[]

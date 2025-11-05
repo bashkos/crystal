@@ -14,7 +14,7 @@ import {
   ChevronDown,
   Eye,
   Settings,
-  Archive
+  Archive,
   Info
 } from "lucide-react"
 import { NotificationCenter } from "./NotificationCenter"
@@ -156,7 +156,10 @@ export default function NotificationsPanel() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleMarkAsRead(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleMarkAsRead(notification.id)
+                          }}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
@@ -164,7 +167,8 @@ export default function NotificationsPanel() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           // Navigate to related page
                           if (notification.data?.campaignId) {
                             window.location.href = `/dashboard/campaigns/${notification.data.campaignId}`
@@ -182,29 +186,44 @@ export default function NotificationsPanel() {
                 ))}
               </div>
             )}
+          </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between p-4 border-t">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleViewAll}
-                className="text-xs"
-              >
-                View All
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearAll}
-                className="text-xs"
-              >
-                Clear All
-              </Button>
-            </div>
+          {/* Footer */}
+          <div className="flex items-center justify-between p-4 border-t">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleViewAll}
+              className="text-xs"
+            >
+              View All
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleClearAll}
+              className="text-xs"
+            >
+              Clear All
+            </Button>
           </div>
         </div>
       )}
     </div>
   )
+}
+
+function getNotificationColor(type: string): string {
+  switch (type) {
+    case "CAMPAIGN_UPDATE":
+      return "bg-blue-100"
+    case "APPLICATION_UPDATE":
+      return "bg-green-100"
+    case "NEW_MESSAGE":
+      return "bg-purple-100"
+    case "PAYMENT_UPDATE":
+      return "bg-green-100"
+    default:
+      return "bg-gray-100"
+  }
 }

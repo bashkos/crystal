@@ -5,7 +5,7 @@ import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@//components/ui/input"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { NotificationCenter } from "@/components/ui/notifications/NotificationCenter"
@@ -19,10 +19,14 @@ import {
   Filter,
   Download,
   Search,
-  Calendar
-  TrendingUp
-  Clock
-  AlertTriangle
+  Calendar,
+  TrendingUp,
+  Clock,
+  AlertTriangle,
+  FileText,
+  Users,
+  MessageSquare,
+  DollarSign
 } from "lucide-react"
 import Link from "next/link"
 
@@ -62,7 +66,7 @@ export default function NotificationsPage() {
       const mockNotifications: Notification[] = [
         {
           id: "1",
-          userId: session.user.id,
+          userId: session?.user?.id || "",
           type: "CAMPAIGN_UPDATE",
           title: "Campaign status changed",
           message: "Your 'Summer Collection' campaign is now in review",
@@ -72,9 +76,8 @@ export default function NotificationsPage() {
         },
         {
           id: "2",
-          userId: session.user.id,
+          userId: session?.user?.id || "",
           type: "NEW_MESSAGE",
-          conversation: "conversation-1",
           title: "New message from Tech Startup",
           message: "Your proposal looks great! Let's schedule a call.",
           data: { senderId: "user-2", conversationId: "conversation-1" },
@@ -83,7 +86,7 @@ export default function NotificationsPage() {
         },
         {
           id: "3",
-          userId: session.user.id,
+          userId: session?.user?.id || "",
           type: "APPLICATION_UPDATE",
           title: "Application reviewed",
           message: "Your application has been shortlisted!",
@@ -93,7 +96,7 @@ export default function NotificationsPage() {
         },
         {
           id: "4",
-          userId: session.user.id,
+          userId: session?.user?.id || "",
           type: "PAYMENT_UPDATE",
           title: "Payment released",
           message: "Payment for contract has been released to your account",
@@ -235,9 +238,11 @@ export default function NotificationsPage() {
     }
   }
 
+  const unreadCount = notifications.filter(n => !n.isRead).length
+
   const markNotificationAsReadMutation = async (notificationId: string) => {
-  return handleMarkAsRead(notificationId)
-}
+    return handleMarkAsRead(notificationId)
+  }
 
   const markAllAsReadMutation = async () => {
     return handleMarkAllAsRead()
@@ -246,34 +251,174 @@ export default function NotificationsPage() {
   const clearNotificationsMutation = async () => {
     try {
       setNotifications([])
-      setUnreadCount(0)
       return { success: true }
     } catch (error) {
       return { success: false, error }
     }
   }
 
-  const getUnreadCount = async () => {
+  const getUnreadCount = () => {
     return unreadCount
   }
 
-  return {
-    markNotificationAsReadMutation,
-    markAllAsReadMutation,
-    clearNotificationsMutation,
-    getUnreadCount,
-    filteredNotifications,
-    notifications,
-    loading,
-    error,
-    formatTimeAgo,
-    getNotificationIcon,
-    getStatusColor,
-    getPriorityLabel,
-    getTypeColor,
-    markNotificationAsRead: markNotificationAsReadMutation,
-    markAllAsRead: markAllAsReadMutation,
-    clearNotifications: clearNotificationsMutation,
-    getUnreadCount: getUnreadCount()
-  }
+  return (
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Notifications</h1>
+          <p className="text-gray-600">Stay updated with your platform activities</p>
+        </div>
+        <div className="flex items-center space-x-4">
+          <Button
+            variant="outline"
+            onClick={() => window.location.href = "/dashboard/settings"}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Settings
+          </Button>
+          <Button
+            onClick={markAllAsReadMutation}
+            disabled={unreadCount === 0}
+          >
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Mark All as Read
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        {/* Sidebar with filters */}
+        <div className="lg:col-span-1">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Filters</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">Status</label>
+                <Select value={filter} onValueChange={setFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="unread">Unread</SelectItem>
+                    <SelectItem value="read">Read</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-2 block">Search</label>
+                <Input
+                  placeholder="Search notifications..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+
+              <div className="pt-4 border-t">
+                <div className="text-sm space-y-2">
+                  <div className="flex justify-between">
+                    <span>Total:</span>
+                    <span className="font-medium">{notifications.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Unread:</span>
+                    <span className="font-medium text-red-600">{unreadCount}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Main content */}
+        <div className="lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>All Notifications</span>
+                <Badge variant="outline">
+                  {filteredNotifications.length} items
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Your recent notifications and updates
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Clock className="h-6 w-6 animate-spin text-gray-400" />
+                </div>
+              ) : error ? (
+                <div className="text-center py-8 text-red-600">
+                  {error}
+                </div>
+              ) : filteredNotifications.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Bell className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No notifications found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 rounded-lg border transition-colors ${
+                        !notification.isRead ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200"
+                      } ${getTypeColor(notification.type)}`}
+                    >
+                      <div className="flex items-start space-x-4">
+                        <div className={`p-2 rounded-full bg-gray-100`}>
+                          {getNotificationIcon(notification.type)}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-semibold text-gray-900">
+                                {notification.title}
+                              </h4>
+                              <p className="text-gray-600 mt-1">
+                                {notification.message}
+                              </p>
+                              <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
+                                <span>{formatTimeAgo(notification.timestamp)}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {getPriorityLabel(notification.type)}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              {!notification.isRead && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => markNotificationAsReadMutation(notification.id)}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {notification.data?.campaignId && (
+                                <Link href={`/dashboard/campaigns/${notification.data.campaignId}`}>
+                                  <Button variant="outline" size="sm">
+                                    View
+                                  </Button>
+                                </Link>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
 }

@@ -94,6 +94,7 @@ model BrandProfile {
 
   // Settings
   campaignPreferences Json?      @map("campaign_preferences")
+  trustScore          Float?     @default(0) @map("trust_score")
 
   user                User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   campaigns           Campaign[]

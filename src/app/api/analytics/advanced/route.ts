@@ -377,7 +377,7 @@ export async function POST(request: Request) {
     console.error("Error in advanced analytics POST:", error)
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Validation error", errors: error.errors },
+        { message: "Validation error", errors: error.issues },
         { status: 400 }
       )
     }
@@ -466,7 +466,7 @@ export async function PUT(request: Request) {
     console.error("Error in advanced analytics PUT:", error)
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { message: "Validation error", errors: error.errors },
+        { message: "Validation error", errors: error.issues },
         { status: 400 }
       )
     }

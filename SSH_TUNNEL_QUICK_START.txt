@@ -1,0 +1,21 @@
+﻿
+=== SSH Tunnel Quick Start ===
+
+To set up SSH tunnel, run this command in a NEW PowerShell window:
+
+ssh -L 5432:127.0.0.1:5432 YOUR_USERNAME@31.97.34.56
+
+Replace YOUR_USERNAME with your VPS username.
+
+Common usernames: root, ubuntu, admin, or your custom username
+
+Example:
+ssh -L 5432:127.0.0.1:5432 root@31.97.34.56
+
+After running the command:
+1. Enter your VPS password when prompted
+2. Keep that terminal window OPEN
+3. Come back to this terminal and run: npm run dev
+
+The tunnel will forward local port 5432 to your VPS database.
+

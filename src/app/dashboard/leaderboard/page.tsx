@@ -27,7 +27,7 @@ import {
   Star,
   Shield,
   Zap,
-  Fire
+  Flame
 } from "lucide-react"
 
 interface LeaderboardEntry {
@@ -180,7 +180,7 @@ export default function LeaderboardPage() {
       "🎯": Target,
       "⭐": Star,
       "💎": Shield,
-      "🔥": Fire,
+      "🔥": Flame,
       "💫": Zap,
       "📅": Calendar,
       "🚀": TrendingUp,

@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
 import { ContentAnalyzer } from "@/lib/ai/content-analyzer"
-import { triggerNotification } from "@/lib/api/notifications/stream"
+import { triggerNotification } from "@/lib/notifications"
 
 const contentAnalysisSchema = z.object({
   contentId: z.string(),
@@ -16,7 +16,7 @@ const contentAnalysisSchema = z.object({
     "quality",
     "performance",
     "visual"
-  ]).default(["overview"])),
+  ])).default(["overview"]),
   timeframe: z.enum(["week", "month", "quarter", "year"]).default("month"),
   filters: z.object({
     campaignId: z.string().optional(),
@@ -53,21 +53,22 @@ export async function POST(request: Request) {
       for (const platform of filters.platforms) {
         const platformQuery = await prisma.platformProfile.findMany({
           where: {
-            platform: {
-              platform: platform.toLowerCase()
-            }
+            platform: platform.toUpperCase() as any
           },
           include: {
-            influencer: {
-              user: {
-                id: true,
-                brandProfile: true,
+            influencerProfile: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                  }
+                }
               }
             }
           }
         })
 
-        const userIds = platformQuery.map(query => query?.influencer?.user?.id).filter(Boolean) as string[]
+        const userIds = platformQuery.map(query => query?.influencerProfile?.user?.id).filter(Boolean) as string[]
         platformUserIds.push(...userIds)
       }
 
@@ -101,24 +102,35 @@ export async function POST(request: Request) {
         contract: {
           include: {
             campaign: {
-              brand: {
-                industry: true
+              include: {
+                brandProfile: {
+                  select: {
+                    industry: true
+                  }
+                }
               }
             },
             influencer: {
-              user: {
+              select: {
                 id: true,
-                brandProfile: true,
-                niches: true,
-                platforms: true,
-                trustScore: true
+                influencerProfile: {
+                  select: {
+                    niches: true,
+                    trustScore: true,
+                    platforms: {
+                      select: {
+                        platform: true
+                      }
+                    }
+                  }
+                }
               }
             }
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        submittedAt: 'desc'
       },
       take: Math.min(maxResults, 10)
     })

@@ -42,34 +42,39 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-          include: {
-            brandProfile: true,
-            influencerProfile: true,
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+            include: {
+              brandProfile: true,
+              influencerProfile: true,
+            }
+          })
+
+          if (!user || !user.passwordHash) {
+            return null
           }
-        })
 
-        if (!user || !user.passwordHash) {
+          const isValidPassword = await bcrypt.compare(
+            credentials.password,
+            user.passwordHash
+          )
+
+          if (!isValidPassword) {
+            return null
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            name: user.brandProfile?.companyName ||
+                  user.influencerProfile?.firstName + " " + user.influencerProfile?.lastName ||
+                  user.email.split('@')[0],
+          }
+        } catch (error) {
+          console.error('Database error during authentication:', error)
           return null
-        }
-
-        const isValidPassword = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        )
-
-        if (!isValidPassword) {
-          return null
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          role: user.role,
-          name: user.brandProfile?.companyName ||
-                user.influencerProfile?.firstName + " " + user.influencerProfile?.lastName ||
-                user.email.split('@')[0],
         }
       }
     })
@@ -133,6 +138,7 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error) {
           console.error("Error during Google sign in:", error)
+          // Return false to prevent sign in if database error
           return false
         }
       }

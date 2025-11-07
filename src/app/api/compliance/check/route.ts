@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { z } from "zod"
 import { ContentComplianceChecker } from "@/lib/ai/content-compliance"
-import { triggerNotification } from "@/lib/api/notifications/stream"
+import { triggerNotification } from "@/lib/notifications"
 
 const complianceCheckSchema = z.object({
   contentId: z.string(),

@@ -1,0 +1,25 @@
+﻿
+=== DATABASE SETUP REQUIRED ===
+
+The application requires a PostgreSQL database.
+
+Option 1: Use Supabase (Free)
+1. Go to https://supabase.com and create a free account
+2. Create a new project
+3. Go to Settings > Database
+4. Copy the connection string (URI format)
+5. Update DATABASE_URL in .env.local
+
+Option 2: Use Neon (Free)
+1. Go to https://neon.tech and create a free account
+2. Create a new project
+3. Copy the connection string
+4. Update DATABASE_URL in .env.local
+
+Option 3: Local PostgreSQL
+1. Install PostgreSQL on your machine
+2. Create a database named 'crystal_db'
+3. Update DATABASE_URL with your local credentials
+
+After setting up the database, run: npm run db:push
+

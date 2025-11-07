@@ -22,7 +22,7 @@ import {
   Edit,
   Trash2,
   ExternalLink,
-  Apply,
+  Send,
   MessageSquare,
   FileText
 } from "lucide-react"
@@ -453,7 +453,7 @@ export default function CampaignDetailPage() {
                   className="w-full"
                   size="lg"
                 >
-                  <Apply className="h-4 w-4 mr-2" />
+                  <Send className="h-4 w-4 mr-2" />
                   {applying ? "Applying..." : "Apply to Campaign"}
                 </Button>
 

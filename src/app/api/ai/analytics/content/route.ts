@@ -6,6 +6,23 @@ import { z } from "zod"
 import { ContentAnalyzer } from "@/lib/ai/content-analyzer"
 import { triggerNotification } from "@/lib/notifications"
 
+interface ContentAnalysis {
+  id: string
+  contentType: string
+  analysisType: string
+  timestamp: string
+  score?: number
+  qualityScore?: number
+  sentimentScore?: string
+  performance_metrics?: {
+    likes_prediction: number
+    comments_prediction: number
+    shares_prediction: number
+    reach_prediction: number
+  }
+  error?: string
+}
+
 const contentAnalysisSchema = z.object({
   contentId: z.string(),
   contentType: z.enum(["image", "video", "audio", "text"]),
@@ -68,7 +85,7 @@ export async function POST(request: Request) {
           }
         })
 
-        const userIds = platformQuery.map(query => query?.influencerProfile?.user?.id).filter(Boolean) as string[]
+        const userIds = platformQuery.map((query: any) => query?.influencerProfile?.user?.id).filter(Boolean) as string[]
         platformUserIds.push(...userIds)
       }
 
@@ -136,7 +153,7 @@ export async function POST(request: Request) {
     })
 
     // Process content through AI analysis
-    const analyzedContent = []
+    const analyzedContent: ContentAnalysis[] = []
 
     for (const item of content) {
       try {
@@ -148,13 +165,28 @@ export async function POST(request: Request) {
           timeframe: timeframe
         })
 
-        analyzedContent.push(analysis)
+        // Convert ContentAnalysis from analyzer to local ContentAnalysis format
+        analyzedContent.push({
+          id: item.id,
+          contentType: analysis.contentType,
+          analysisType: analysisTypes[0] || "overview",
+          timestamp: new Date().toISOString(),
+          score: analysis.qualityScore || analysis.engagementPrediction || 0.5,
+          qualityScore: analysis.qualityScore,
+          sentimentScore: analysis.sentimentScore,
+          performance_metrics: {
+            likes_prediction: analysis.performanceMetrics.likes_prediction,
+            comments_prediction: analysis.performanceMetrics.comments_prediction,
+            shares_prediction: analysis.performanceMetrics.shares_prediction,
+            reach_prediction: analysis.performanceMetrics.reach_prediction
+          }
+        })
       } catch (error) {
         console.error(`Error analyzing content ${item.id}:`, error)
         analyzedContent.push({
           id: item.id,
           contentType: item.contentType,
-          analysisType: "overview",
+          analysisType: analysisTypes[0] || "overview",
           timestamp: new Date().toISOString(),
           score: 0.5,
           error: (error as Error).message
@@ -181,23 +213,6 @@ export async function POST(request: Request) {
       { status: 500 }
     )
   }
-}
-
-interface ContentAnalysis {
-  id: string
-  contentType: string
-  analysisType: string
-  timestamp: string
-  score?: number
-  qualityScore?: number
-  sentimentScore?: string
-  performance_metrics?: {
-    likes_prediction: number
-    comments_prediction: number
-    shares_prediction: number
-    reach_prediction: number
-  }
-  error?: string
 }
 
 function calculateAggregateInsights(analyzedContent: ContentAnalysis[]) {

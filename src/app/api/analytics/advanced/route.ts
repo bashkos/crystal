@@ -267,8 +267,24 @@ export async function POST(request: Request) {
         session.user.id,
         {
           ...dashboardData,
-          userId: session.user.id
-        }
+          userId: session.user.id,
+          filters: dashboardData.filters.map((filter: any, index: number) => ({
+            ...filter,
+            id: `filter-${Date.now()}-${index}`
+          })),
+          widgets: dashboardData.widgets.map((widget: any, index: number) => ({
+            ...widget,
+            id: `widget-${Date.now()}-${index}`,
+            config: widget.config ? {
+              ...widget.config,
+              comparison: widget.config.comparison && widget.config.comparison.enabled ? {
+                enabled: true,
+                type: widget.config.comparison.type || 'previous_period',
+                value: widget.config.comparison.value
+              } : undefined
+            } : undefined
+          }))
+        } as any
       )
 
       return NextResponse.json({
@@ -282,7 +298,10 @@ export async function POST(request: Request) {
 
       const report = await analyticsEngine.createAnalyticsReport(
         session.user.id,
-        reportData
+        {
+          ...reportData,
+          userId: session.user.id
+        } as any
       )
 
       return NextResponse.json({

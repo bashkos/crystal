@@ -134,7 +134,7 @@ export interface PredictiveInsight {
 }
 
 export class AdvancedAnalyticsEngine {
-  private readonly AVAILABLE_METRICS: AnalyticsMetric[] = [
+  readonly AVAILABLE_METRICS: AnalyticsMetric[] = [
     {
       id: 'campaign_roi',
       name: 'Campaign ROI',
@@ -698,5 +698,44 @@ export class AdvancedAnalyticsEngine {
   private async cacheInsights(userId: string, insights: PredictiveInsight[]): Promise<void> {
     // Mock implementation
     console.log('Caching insights for user:', userId)
+  }
+
+  getAvailableMetrics(): AnalyticsMetric[] {
+    return this.AVAILABLE_METRICS
+  }
+
+  async getDashboardTemplates(): Promise<any[]> {
+    // Mock implementation - return dashboard templates
+    return []
+  }
+
+  async duplicateDashboard(dashboardId: string, userId: string, name: string): Promise<any> {
+    // Mock implementation - duplicate dashboard with new user
+    return {
+      id: `dashboard-duplicate-${Date.now()}`,
+      name,
+      userId,
+      createdAt: new Date().toISOString()
+    }
+  }
+
+  async updateDashboard(dashboardId: string, updates: any): Promise<any> {
+    // Mock implementation - update dashboard
+    return { id: dashboardId, ...updates, updatedAt: new Date().toISOString() }
+  }
+
+  async updateReport(reportId: string, updates: any): Promise<any> {
+    // Mock implementation - update report
+    return { id: reportId, ...updates }
+  }
+
+  async deleteDashboard(dashboardId: string): Promise<void> {
+    // Mock implementation - delete dashboard
+    console.log('Deleting dashboard:', dashboardId)
+  }
+
+  async deleteReport(reportId: string): Promise<void> {
+    // Mock implementation - delete report
+    console.log('Deleting report:', reportId)
   }
 }

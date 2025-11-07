@@ -685,12 +685,12 @@ export class AdvancedAnalyticsEngine {
     console.log('Saving report:', report.id)
   }
 
-  private async getDashboard(dashboardId: string): Promise<CustomDashboard | null> {
+  async getDashboard(dashboardId: string): Promise<CustomDashboard | null> {
     // Mock implementation
     return null
   }
 
-  private async getReport(reportId: string): Promise<AnalyticsReport | null> {
+  async getReport(reportId: string): Promise<AnalyticsReport | null> {
     // Mock implementation
     return null
   }

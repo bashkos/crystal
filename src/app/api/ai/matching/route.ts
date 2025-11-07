@@ -208,8 +208,7 @@ function calculateCompatibilityScore(
   }
 
   // Platform compatibility (20% weight)
-  const platformCompatibility = campaign.platform.toLowerCase() ===
-    influencer.platforms.some(p => p.platform.toLowerCase() === campaign.platform.toLowerCase()) ? 1 : 0
+  const platformCompatibility = influencer.platforms.some((p: any) => p.platform.toLowerCase() === campaign.platform.toLowerCase()) ? 1 : 0
   score += platformCompatibility * 0.2
   if (platformCompatibility === 1) {
     matchReasons.push(`Primary platform match: ${campaign.platform}`)
@@ -270,7 +269,7 @@ function calculateCompatibilityScore(
     }
 
     if (preferences.requiredNiches && preferences.requiredNiches.length > 0) {
-      const hasRequiredNiches = preferences.requiredNiches.some(niche =>
+      const hasRequiredNiches = preferences.requiredNiches.some((niche: string) =>
         influencer.niches.includes(niche)
       )
       if (!hasRequiredNiches) {
@@ -297,8 +296,8 @@ function calculateCompatibilityScore(
 function calculateNicheCompatibility(campaignNiches: string[], influencerNiches: string[]): number {
   if (campaignNiches.length === 0 || influencerNiches.length === 0) return 0.5
 
-  const intersection = campaignNiches.filter(niche =>
-    influencerNiches.some(infNiche =>
+  const intersection = campaignNiches.filter((niche: string) =>
+    influencerNiches.some((infNiche: string) =>
       infNiche.toLowerCase().includes(niche.toLowerCase()) ||
       niche.toLowerCase().includes(infNiche.toLowerCase())
     )

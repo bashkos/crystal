@@ -265,7 +265,10 @@ export async function POST(request: Request) {
 
       const dashboard = await analyticsEngine.createCustomDashboard(
         session.user.id,
-        dashboardData
+        {
+          ...dashboardData,
+          userId: session.user.id
+        }
       )
 
       return NextResponse.json({
